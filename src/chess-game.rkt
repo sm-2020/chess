@@ -1,5 +1,7 @@
 #lang racket/gui
 
+(require embedded-gui) ; for snip-width and snip-height
+
 ; A chess game using racket's editor toolkit
 
 ;define an instance of the snip-class% object. This snip class? is used when serializing
@@ -25,10 +27,14 @@
 ; a size which is the size in pixels of the chess piece (since the piece is a square it will have the same width and height)
 (define chess-piece%
   (class snip%
-    (init-field glyph font size)
+    (init-field glyph font size [location #f]) ; location false means a piece is not on the board
+
+    (define/public (set-location l) (set! location l))
+    (define/public (get-location) location)
+    
     (super-new)
     (send this set-snipclass chess-piece-snip-class)
-
+  
     ; get-extent method is used by the pasteboard% to obtain the dimensions of the snip
     ; it just reports the size as both the width and height, a device context, dc is passed in,
     ; together with the position of the snip on the canvas as the x and y coordinates, in return,
@@ -70,6 +76,44 @@
     (define/override (on-paint before? dc . other)
       (when before?
         (draw-chess-board dc)))
+
+    ;The chess pieces are added to the chess board using the insert method,
+    ; which allows placing a snip at any coordinate, or at (0, 0) if no coordinates are specified.
+    ; To place a snip in its correct position, based on the location stored inside the snip, we can derive
+    ; the pasteboard%?s after-insert method, which is invoked after each snip is inserted and call position-piece for the snip.
+    
+    (define/augment (after-insert chess-piece . rest) ;override pasteboard%'s after-insert method in order to inject position-piece
+      (position-piece this chess-piece))
+
+    (define (position-piece board piece)
+      (define-values (canvas-width canvas-height)
+        (let ((c (send board get-canvas)))
+         (send c get-size)))
+      (define-values (square-width square-height)
+        (values (/ canvas-width 8) (/ canvas-height 8)))
+      (define-values (rank file)
+        (location->rank-file (send piece get-location)))
+      (define-values (square-x square-y)
+        (values (* file square-width) (* rank square-height)))
+      (define piece-width (snip-width piece))
+      (define piece-height (snip-height piece))
+      (send board move-to piece
+            (+ square-x (/ (- square-width piece-width) 2))
+            (+ square-y (/ (- square-height piece-height) 2))))
+
+    ; The location->rank-file function, used by position-piece, converts a chess board location
+    ; into the row and column of the corresponding square on the board. It is simpler for our program to use
+    ; chess board locations, written as ?d3? or ?f5?, as they can be read as imputs from the user or from a file
+    (define (location->rank-file location)
+      (unless (and (string? location) (= (string-length location) = 2))
+        (raise-argument-error 'location "valid chess position a1 .. h8" location))
+      (define file
+        (index-of '(#\a #\b #\c #\d #\e #\f #\g #\h) (string-ref location 0)))
+      (define rank
+        (index-of '(#\8 #\7 #\6 #\5 #\4 #\3 #\2 #\1) (string-ref location 1)))
+       (unless (and rank file)
+         (raise-argument-error 'location "valid chess position a1 .. a8" location))
+        (values rank file))
 ))
 
 ; Drawing resources such as brushes, pens and fonts must be created and set on the device context
@@ -118,7 +162,6 @@
 )
 
 ;;------------------------------------------------------
-
 (define chess-piece-data
       (hash
         "K" #\u2654 "Q" #\u2655 "R" #\u2656 "B" #\u2657 "N" #\u2658 "P" #\u2659
