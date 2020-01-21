@@ -189,6 +189,27 @@
 (send topLevel show #t) ;; show the toplevel frame
 ;; Insert one of each of the chess pieces onto the board, so we can see them
 ;; and drag them around.
-(for ([id (in-hash-keys chess-piece-data)])
-  (define piece (make-chess-piece id))
-  (send board insert piece (random (* 50 6)) (random (* 50 6))))
+;(for ([id (in-hash-keys chess-piece-data)])
+;  (define piece (make-chess-piece id))
+;  (send board insert piece (random (* 50 6)) (random (* 50 6))))
+
+; Loads a chess game onto the board. The game is encoded as a string with the piece mnemonic 
+; followed by its position. 
+; For example, “Ra1” means that the white rook is at square “a1”(define initial
+(define initial 
+  (string-append
+   "Ra1Nb1Bc1Qd1Ke1Bf1Ng1Rh1"
+   "Pa2Pb2Pc2Pd2Pe2Pf2Pg2Ph2"
+   "pa7pb7pc7pd7pe7pf7pg7ph7"
+   "ra8nb8bc8qd8ke8bf8ng8rh8")) 
+
+(define (setup-board board position)
+  (send board clear)
+  (define piece-count (/ (string-length position) 3))
+  (for ([index (in-range piece-count)])
+       (define pos(* index 3))
+       (define name (substring position pos (add1 pos)))
+       (define location (substring position (add1 pos) (+ (add1 pos) 2)))
+       (send board insert (make-chess-piece name location))))
+
+(setup-board board initial)
