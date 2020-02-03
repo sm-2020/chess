@@ -168,10 +168,10 @@
          "k" #\u265A "q" #\u265B "r" #\u265C "b" #\u265D "n" #\u265E "p" #\u265F))
 
 ; this function receieves the piece code and creates a snip piece
-(define (make-chess-piece id)
+(define (make-chess-piece id [location #f])
    (define glyph (hash-ref chess-piece-data id))
    (define font (send the-font-list find-or-create-font 30 'default 'normal 'normal))
-   (new chess-piece% [glyph (string glyph)] [font font] [size 30]))
+   (new chess-piece% [glyph (string glyph)] [font font] [size 30] [location location]))
 ; Test code to see how this snip works
 
 ;Create a pasteboard to hold all the chess peices
